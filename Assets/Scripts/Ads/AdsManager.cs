@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System;
 using GoogleMobileAds.Api;
+using System.Collections.Generic;
 
 public class AdsManager : MonoBehaviour
 {
@@ -38,10 +39,8 @@ public class AdsManager : MonoBehaviour
     {
         mSaveAndLoadData = SaveAndLoadData.Instance;
 
-        MobileAds.Initialize(initStatus => { });
-
-        this.RequestBanner();
-
+        //MobileAds.Initialize(initStatus => { });
+        MobileAds.Initialize("ca-app-pub-3940256099942544~3347511713");
     }
 
 
@@ -87,10 +86,22 @@ public class AdsManager : MonoBehaviour
         this.bannerView.OnAdLeavingApplication += this.HandleOnAdLeavingApplication;
 
         // Create an empty ad request.
-        AdRequest request = new AdRequest.Builder().Build();
-
         // Load the banner with the request.
-        this.bannerView.LoadAd(request);
+        this.bannerView.LoadAd(CreateAdRequest());
+    }
+
+
+    private AdRequest CreateAdRequest()
+    {
+        return new AdRequest.Builder()
+            .AddTestDevice(AdRequest.TestDeviceSimulator)
+            .AddTestDevice("0123456789ABCDEF0123456789ABCDEF")
+            .AddKeyword("Bravo")
+            .SetGender(Gender.Male)
+            .SetBirthday(new DateTime(1991, 5, 14))
+            .TagForChildDirectedTreatment(false)
+            .AddExtra("color_bg", "FFAF15")
+            .Build();
     }
 
     public void HideBanner()
@@ -118,11 +129,10 @@ public class AdsManager : MonoBehaviour
         Debug.Log("Request interstitial ads");
         // Initialize an InterstitialAd.
         this.interstitial = new InterstitialAd(adUnitId);
-        // Create an empty ad request.
-        AdRequest request = new AdRequest.Builder().Build();
+        
         // Load the interstitial with the request.
-        this.interstitial.LoadAd(request);
-        this.interstitial.Show();
+        this.interstitial.LoadAd(CreateAdRequest());
+        this.interstitial.Show();   
 
     }
 
