@@ -1,8 +1,10 @@
-﻿using System;
+﻿    using System;
 using UnityEngine;
 using GoogleMobileAds.Api;
 using UnityEngine.SceneManagement;
 using UnityEngine.Events;
+using UnityEngine.Advertisements;
+
 public class GoogleMobileAdsScript : MonoBehaviour
 {
 
@@ -39,6 +41,20 @@ public class GoogleMobileAdsScript : MonoBehaviour
     private string Admob_Interstitial_IOS_ID = string.Empty;
     [SerializeField]
     private string Admob_Reward_IOS_ID = string.Empty;
+
+    [Space()]
+    [Header("Unity Settings")]
+    [Space()]
+    [SerializeField]
+    private string UnityAds_GameID_ANDROID = string.Empty;
+    [SerializeField]
+    private string UnityAds_GameID_IOS = string.Empty;
+    [SerializeField]
+    private bool testMode;
+    private static readonly string mPlacementRewardUnityAds = "rewardedVideo";
+    private static readonly string mPlacementBannerUnityAds = "banner";
+    private static readonly string mPlacementInterstitialUnityAds = "interstitialVideo";
+
     [Space()]
     [SerializeField]
     private bool showGUI = false;
@@ -236,7 +252,6 @@ public class GoogleMobileAdsScript : MonoBehaviour
 #else
         string adUnitId = "unexpected_platform";
 #endif
-
         // Clean up banner ad before creating a new one.
         if (bannerView != null)
         {
@@ -339,8 +354,6 @@ public class GoogleMobileAdsScript : MonoBehaviour
 
     public void ShowInterstitial()
     {
-
-
         if (this.interstitial.IsLoaded())
         {
             this.interstitial.Show();
@@ -350,11 +363,6 @@ public class GoogleMobileAdsScript : MonoBehaviour
         {
             MonoBehaviour.print("Interstitial is not ready yet");
         }
-
-
-
-
-
     }
 
     public bool CheckRewardBasedVideo()
