@@ -258,5 +258,8 @@ MonoBehaviour:
   Admob_Banner_IOS_ID: 
   Admob_Interstitial_IOS_ID: 
   Admob_Reward_IOS_ID: 
+  UnityAds_GameID_ANDROID: 4023247
+  UnityAds_GameID_IOS: 4023246
+  testMode: 1
   showGUI: 1
-  showBanner: 1
+  showBanner: 0

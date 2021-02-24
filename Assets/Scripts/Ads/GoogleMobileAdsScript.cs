@@ -76,17 +76,23 @@ public class GoogleMobileAdsScript : MonoBehaviour
 
 #if UNITY_ANDROID 
         string appId = (string.IsNullOrEmpty(APP_ANDROID_ID)) ? "ca-app-pub-3940256099942544~3347511713" : APP_ANDROID_ID;
+        Advertisement.Initialize(UnityAds_GameID_ANDROID,testMode);
 
 #elif UNITY_IPHONE
         string appId = (string.IsNullOrEmpty(APP_IOS_ID)) ? "ca-app-pub-3940256099942544~1458002511" : APP_IOS_ID;
+        Advertisement.Initialize(UnityAds_GameID_IOS,testMode);
 #else
         string appId = "unexpected_platform";
+        Advertisement.Initialize("unexpected_platform",testMode);
 #endif
 
         MobileAds.SetiOSAppPauseOnBackground(true);
 
         // Initialize the Google Mobile Ads SDK.
         MobileAds.Initialize(appId);
+
+        
+        Advertisement.Show();
 
         // Get singleton reward based video ad reference.
         this.rewardBasedVideo = RewardBasedVideoAd.Instance;
@@ -252,6 +258,7 @@ public class GoogleMobileAdsScript : MonoBehaviour
 #else
         string adUnitId = "unexpected_platform";
 #endif
+        
         // Clean up banner ad before creating a new one.
         if (bannerView != null)
         {
@@ -271,9 +278,6 @@ public class GoogleMobileAdsScript : MonoBehaviour
         // Load a banner ad.
         bannerView.LoadAd(this.CreateAdRequest());
         this.tempBannerView = bannerView;
-
-
-
 
     }
 

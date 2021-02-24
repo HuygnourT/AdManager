@@ -2,6 +2,7 @@
 using System;
 using GoogleMobileAds.Api;
 using System.Collections.Generic;
+using UnityEngine.Advertisements;
 
 public class AdsManager : MonoBehaviour
 {
@@ -41,6 +42,9 @@ public class AdsManager : MonoBehaviour
 
         //MobileAds.Initialize(initStatus => { });
         MobileAds.Initialize("ca-app-pub-3940256099942544~3347511713");
+
+        //Advertisement.Show();
+
     }
 
 
