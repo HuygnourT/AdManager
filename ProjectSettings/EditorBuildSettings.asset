@@ -6,15 +6,18 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Scenes/SampleScene.unity
+    guid: 2cda990e2423bbf4892e6590ba056729
+  - enabled: 1
     path: Assets/AudienceNetwork/Scenes/Settings/SettingsScene.unity
     guid: d88663653ebb24580ac0c753bb4f140c
   - enabled: 1
-    path: Assets/AudienceNetwork/Scenes/Banner/AdViewScene.unity
-    guid: cb29e86fb3daa461f8da1a6d755fe9ce
+    path: Assets/AudienceNetwork/Scenes/RewardedVideo/RewardedVideoAdScene.unity
+    guid: 0079f98ce8e504ce0b9d7c937e331b03
   - enabled: 1
     path: Assets/AudienceNetwork/Scenes/Interstitial/InterstitialAdScene.unity
     guid: f72b5a1d5965144f795ee32584534444
   - enabled: 1
-    path: Assets/AudienceNetwork/Scenes/RewardedVideo/RewardedVideoAdScene.unity
-    guid: 0079f98ce8e504ce0b9d7c937e331b03
+    path: Assets/AudienceNetwork/Scenes/Banner/AdViewScene.unity
+    guid: cb29e86fb3daa461f8da1a6d755fe9ce
   m_configObjects: {}

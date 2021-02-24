@@ -29,7 +29,7 @@ public class RewardedVideoAdScene : BaseScene
 
         // Create the rewarded video unit with a placement ID (generate your own on the Facebook app settings).
         // Use different ID for each ad placement in your app.
-        rewardedVideoAd = new RewardedVideoAd("183898216451495_183899426451374");
+        rewardedVideoAd = new RewardedVideoAd("YOUR_PLACEMENT_ID");
 
         // For S2S validation you can create the rewarded video ad with the reward data
         // Refer to documentation here:

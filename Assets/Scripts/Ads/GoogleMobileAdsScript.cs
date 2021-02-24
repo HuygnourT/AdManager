@@ -1,23 +1,19 @@
-﻿    using System;
+﻿using System;
 using UnityEngine;
-using GoogleMobileAds.Api;
-using UnityEngine.SceneManagement;
 using UnityEngine.Events;
 using UnityEngine.Advertisements;
+//using AudienceNetwork;
 
-public class GoogleMobileAdsScript : MonoBehaviour
+public class GoogleMobileAdsScript : MonoBehaviour, IUnityAdsListener
 {
-
-    public static BannerView bannerView;
-    private BannerView tempBannerView;
-    private InterstitialAd interstitial;
-    private RewardBasedVideoAd rewardBasedVideo;
+    public static GoogleMobileAds.Api.BannerView bannerView;
+    private GoogleMobileAds.Api.InterstitialAd interstitial;
+    private GoogleMobileAds.Api.RewardBasedVideoAd rewardBasedVideo;
     private float deltaTime = 0.0f;
     private static string outputMessage = string.Empty;
-    public static bool isSpaceUI = false;
     public static GoogleMobileAdsScript instance;
     [SerializeField]
-    private AdPosition bannerPosition;
+    private GoogleMobileAds.Api.AdPosition bannerPosition;
     [Header("Android Settings")]
     [Header("When settings empty used Ads default of google")]
     [Space()]
@@ -52,15 +48,28 @@ public class GoogleMobileAdsScript : MonoBehaviour
     [SerializeField]
     private bool testMode;
     private static readonly string mPlacementRewardUnityAds = "rewardedVideo";
-    private static readonly string mPlacementBannerUnityAds = "banner";
-    private static readonly string mPlacementInterstitialUnityAds = "interstitialVideo";
+    private static readonly string mPlacementBannerUnityAds = "bannerAds";
+    private static readonly string mPlacementInterstitialUnityAds = "video";
 
     [Space()]
+    [Header("FAN Settings")]
+    [Space()]
+    [SerializeField] private AudienceNetwork.AdSize bannerFanSize;// = (AudienceNetwork.AdSize[])Enum.GetValues(typeof(AudienceNetwork.AdSize));
+    private AudienceNetwork.AdView adView;
+    private AudienceNetwork.RewardedVideoAd rewardedVideoAd;
+    private AudienceNetwork.InterstitialAd interstitialAd;
+
+    [Space()]
+    [SerializeField] private bool isTurnOnUnity = true;
+    [SerializeField] private bool isTurnOnAdsMob = true;
+    [SerializeField] private bool isTurnOnFan = true;
     [SerializeField]
     private bool showGUI = false;
     [SerializeField]
     private bool showBanner = false;
+    /*Priority show ads : Unity, Admobs, Fan*/
 
+    enum TypeAdsLoaded { Banner, Interstitial, Reward};
 
     public static string OutputMessage
     {
@@ -68,66 +77,72 @@ public class GoogleMobileAdsScript : MonoBehaviour
     }
     public void RequestVideo()
     {
-        this.RequestInterstitial();
-        this.RequestRewardBasedVideo();
+        this.RequestInterstitialAdmobs();
+        this.RequestRewardBasedVideoAdmobs();
     }
     public void Start()
     {
+        InitializeAdsMob();
+        InitializeUnityAds();
 
-#if UNITY_ANDROID 
+#if !UNITY_EDITOR
+        InitializeFan();
+#endif
+        instance = this;
+    }
+
+#region Initialize 
+    private void InitializeAdsMob()
+    {
+#if UNITY_ANDROID
         string appId = (string.IsNullOrEmpty(APP_ANDROID_ID)) ? "ca-app-pub-3940256099942544~3347511713" : APP_ANDROID_ID;
-        Advertisement.Initialize(UnityAds_GameID_ANDROID,testMode);
 
 #elif UNITY_IPHONE
         string appId = (string.IsNullOrEmpty(APP_IOS_ID)) ? "ca-app-pub-3940256099942544~1458002511" : APP_IOS_ID;
-        Advertisement.Initialize(UnityAds_GameID_IOS,testMode);
 #else
         string appId = "unexpected_platform";
-        Advertisement.Initialize("unexpected_platform",testMode);
 #endif
 
-        MobileAds.SetiOSAppPauseOnBackground(true);
+        GoogleMobileAds.Api.MobileAds.SetiOSAppPauseOnBackground(true);
 
         // Initialize the Google Mobile Ads SDK.
-        MobileAds.Initialize(appId);
-
-        
-        Advertisement.Show();
+        GoogleMobileAds.Api.MobileAds.Initialize(appId);
 
         // Get singleton reward based video ad reference.
-        this.rewardBasedVideo = RewardBasedVideoAd.Instance;
+        this.rewardBasedVideo = GoogleMobileAds.Api.RewardBasedVideoAd.Instance;
 
         // RewardBasedVideoAd is a singleton, so handlers should only be registered once.
         rewardBasedVideo.OnAdClosed += HandleRewardBasedVideoClosed;
         rewardBasedVideo.OnAdRewarded += HandleRewardBasedVideoRewarded;
+        this.RequestBannerAdmobs();
+        this.RequestRewardBasedVideoAdmobs();
+        this.RequestInterstitialAdmobs();
+    }
 
-        if (bannerView == null)
-        {
-            this.RequestBanner();
-        }
+    private void InitializeUnityAds()
+    {
+#if UNITY_ANDROID
+        Advertisement.Initialize(UnityAds_GameID_ANDROID, testMode);
 
-        if (showBanner)
-        {
-            if (bannerView != null)
-            {
-                bannerView.Show();
-            }
-        }
-        else
-        {
-            if (bannerView != null)
-            {
-                bannerView.Hide();
-            }
-        }
+#elif UNITY_IPHONE
+        Advertisement.Initialize(UnityAds_GameID_IOS,testMode);
+#else
+        Advertisement.Initialize("unexpected_platform", testMode);
+#endif
 
-        this.RequestRewardBasedVideo();
-        this.RequestInterstitial();
-        instance = this;
+        Advertisement.AddListener(this);
 
     }
 
+    private void InitializeFan()
+    {
+        AudienceNetwork.AudienceNetworkAds.Initialize();
+        RequestBannerFan();
+        RequestInterstitialFan();
+        RequestRewardedVideoFan();
+    }    
 
+#endregion
 
     public void OnGUI()
     {
@@ -157,7 +172,9 @@ public class GoogleMobileAdsScript : MonoBehaviour
             buttonHeight);
         if (GUI.Button(requestBannerRect, "Request\nBanner"))
         {
-            this.RequestBanner();
+            //this.RequestBanner();
+            //ShowBannerUnityAds();
+            RequestBannerFan();
         }
 
         Rect destroyBannerRect = new Rect(
@@ -167,7 +184,8 @@ public class GoogleMobileAdsScript : MonoBehaviour
             buttonHeight);
         if (GUI.Button(destroyBannerRect, "Destroy\nBanner"))
         {
-            bannerView.Destroy();
+            //bannerView.Destroy();
+            //HideBannerUnityAds();
         }
 
         Rect requestInterstitialRect = new Rect(
@@ -177,7 +195,9 @@ public class GoogleMobileAdsScript : MonoBehaviour
             buttonHeight);
         if (GUI.Button(requestInterstitialRect, "Request\nInterstitial"))
         {
-            this.RequestInterstitial();
+            //this.RequestInterstitial();
+            //ShowInterstitialUnityAds();
+            RequestInterstitialFan();
         }
 
         Rect showInterstitialRect = new Rect(
@@ -187,7 +207,8 @@ public class GoogleMobileAdsScript : MonoBehaviour
             buttonHeight);
         if (GUI.Button(showInterstitialRect, "Show\nInterstitial"))
         {
-            this.ShowInterstitial();
+            //this.ShowInterstitial();
+            ShowInterstitialFan();
         }
 
         Rect destroyInterstitialRect = new Rect(
@@ -197,7 +218,7 @@ public class GoogleMobileAdsScript : MonoBehaviour
             buttonHeight);
         if (GUI.Button(destroyInterstitialRect, "Destroy\nInterstitial"))
         {
-            this.interstitial.Destroy();
+            //this.interstitial.Destroy();
         }
 
         Rect requestRewardedRect = new Rect(
@@ -207,7 +228,9 @@ public class GoogleMobileAdsScript : MonoBehaviour
             buttonHeight);
         if (GUI.Button(requestRewardedRect, "Request\nRewarded Video"))
         {
-            this.RequestRewardBasedVideo();
+            //this.RequestRewardBasedVideo();
+            //ShowVideoRewardUnityAds();
+            RequestRewardedVideoFan();
         }
 
         Rect showRewardedRect = new Rect(
@@ -217,7 +240,9 @@ public class GoogleMobileAdsScript : MonoBehaviour
             buttonHeight);
         if (GUI.Button(showRewardedRect, "Show\nRewarded Video"))
         {
-            this.ShowRewardBasedVideo();
+            //this.ShowRewardBasedVideo();
+            //ShowVideoRewardUnityAds();
+            ShowRewardedVideoFan();
         }
 
         Rect textOutputRect = new Rect(
@@ -229,21 +254,23 @@ public class GoogleMobileAdsScript : MonoBehaviour
 
     }
 
+
+#region AdMobs Request And Show
     // Returns an ad request with custom ad targeting.
-    private AdRequest CreateAdRequest()
+    private GoogleMobileAds.Api.AdRequest CreateAdRequest()
     {
-        return new AdRequest.Builder()
-            .AddTestDevice(AdRequest.TestDeviceSimulator)
+        return new GoogleMobileAds.Api.AdRequest.Builder()
+            .AddTestDevice(GoogleMobileAds.Api.AdRequest.TestDeviceSimulator)
             .AddTestDevice("0123456789ABCDEF0123456789ABCDEF")
             .AddKeyword("game")
-            .SetGender(Gender.Male)
+            .SetGender(GoogleMobileAds.Api.Gender.Male)
             .SetBirthday(new DateTime(1985, 1, 1))
             .TagForChildDirectedTreatment(false)
             .AddExtra("color_bg", "9B30FF")
             .Build();
     }
 
-    private void RequestBanner()
+    private void RequestBannerAdmobs()
     {
         // These ad units are configured to always serve test ads.
 #if UNITY_EDITOR
@@ -258,15 +285,14 @@ public class GoogleMobileAdsScript : MonoBehaviour
 #else
         string adUnitId = "unexpected_platform";
 #endif
-        
         // Clean up banner ad before creating a new one.
         if (bannerView != null)
         {
             bannerView.Destroy();
         }
-        bannerPosition = AdPosition.Bottom;
+        bannerPosition = GoogleMobileAds.Api.AdPosition.Bottom;
         // Create a 320x50 banner at the top of the screen.
-        bannerView = new BannerView(adUnitId, AdSize.Banner, bannerPosition);
+        bannerView = new GoogleMobileAds.Api.BannerView(adUnitId, GoogleMobileAds.Api.AdSize.Banner, bannerPosition);
 
         // Register for ad events.
         bannerView.OnAdLoaded += this.HandleAdLoaded;
@@ -277,12 +303,21 @@ public class GoogleMobileAdsScript : MonoBehaviour
 
         // Load a banner ad.
         bannerView.LoadAd(this.CreateAdRequest());
-        this.tempBannerView = bannerView;
 
+        ShowBannerAdmobs(false);
     }
 
+    public bool CheckBannerAdmobs()
+    {
+        if(bannerView != null)
+        {
+            return isTurnOnAdsMob;
+        }
 
-    public void VisbileBanner(bool visible)
+        return false;
+    }
+
+    public void ShowBannerAdmobs(bool visible)
     {
         if (visible)
         {
@@ -292,10 +327,9 @@ public class GoogleMobileAdsScript : MonoBehaviour
         {
             bannerView.Hide();
         }
-
-
     }
-    public void RequestInterstitial()
+
+    public void RequestInterstitialAdmobs()
     {
         // These ad units are configured to always serve test ads.
 #if UNITY_EDITOR
@@ -320,7 +354,7 @@ public class GoogleMobileAdsScript : MonoBehaviour
         //}
 
         // Create an interstitial.
-        this.interstitial = new InterstitialAd(adUnitId);
+        this.interstitial = new GoogleMobileAds.Api.InterstitialAd(adUnitId);
 
         // Register for ad events.
         this.interstitial.OnAdLoaded += this.HandleInterstitialLoaded;
@@ -333,7 +367,7 @@ public class GoogleMobileAdsScript : MonoBehaviour
         this.interstitial.LoadAd(this.CreateAdRequest());
     }
 
-    public void RequestRewardBasedVideo()
+    public void RequestRewardBasedVideoAdmobs()
     {
 
 
@@ -350,44 +384,405 @@ public class GoogleMobileAdsScript : MonoBehaviour
 #else
         string adUnitId = "unexpected_platform";
 #endif
-        AdRequest request = new AdRequest.Builder().Build();
+        GoogleMobileAds.Api.AdRequest request = new GoogleMobileAds.Api.AdRequest.Builder().Build();
         this.rewardBasedVideo.LoadAd(request, adUnitId);
 
 
     }
 
+    public bool CheckInterstitialAdmobs()
+    {
+        return isTurnOnAdsMob && interstitial.IsLoaded();
+    }
+
+    public void ShowInterstitialAdmobs()
+    {
+        this.interstitial.Show();
+        this.RequestInterstitialAdmobs();
+    }
+
+    public bool CheckRewardBasedVideoAdmobs()
+    {
+        return isTurnOnAdsMob && rewardBasedVideo.IsLoaded();
+    }
+
+    public void ShowRewardBasedVideoAdmobs(UnityAction action = null)
+    {
+        rewardVideoAction = action;
+        this.rewardBasedVideo.Show();
+        RequestRewardBasedVideoAdmobs();
+    }
+
+    public void EnableAdsMob()
+    {
+        isTurnOnAdsMob = true;
+    }
+
+    public void DisableAdsMob()
+    {
+        isTurnOnAdsMob = false;
+    }
+
+#endregion
+
+#region UnityAds Request And Show
+
+    public bool CheckInterstitialUnityAds()
+    {
+        return isTurnOnUnity && Advertisement.IsReady(mPlacementInterstitialUnityAds);
+    }
+
+    public void ShowInterstitialUnityAds()
+    {
+        Advertisement.Show(mPlacementInterstitialUnityAds);
+
+    }
+
+    public bool CheckBannerUnityAds()
+    {
+        return isTurnOnUnity && Advertisement.IsReady(mPlacementBannerUnityAds);
+    }
+
+    public void ShowBannerUnityAds()
+    {
+        Advertisement.Show(mPlacementBannerUnityAds);
+    }
+
+    public void HideBannerUnityAds()
+    {
+        Advertisement.Banner.Hide();
+    }
+
+    public bool CheckVideoRewardUnityAds()
+    {
+        return isTurnOnUnity && Advertisement.IsReady(mPlacementRewardUnityAds);
+    }
+
+    public void ShowVideoRewardUnityAds()
+    {
+        Advertisement.Show(mPlacementRewardUnityAds);
+    }
+
+    public void EnableUnityAds()
+    {
+        isTurnOnUnity = true;
+    }
+
+    public void DisableUnityAds()
+    {
+        isTurnOnUnity = false;
+    }
+    
+    public bool IsReadyUnityAds(string placementId)
+    {
+        return isTurnOnUnity && Advertisement.IsReady(placementId);
+    }
+
+#endregion
+
+#region FAN Request And Show
+
+    public void RequestBannerFan()
+    {
+        if (adView)
+        {
+            adView.Dispose();
+        }
+
+
+        // Create a banner's ad view with a unique placement ID
+        // (generate your own on the Facebook app settings).
+        // Use different ID for each ad placement in your app.
+        adView = new AudienceNetwork.AdView("183898216451495_183899426451374", bannerFanSize);
+
+
+        adView.Register(gameObject);
+
+        // Set delegates to get notified on changes or when the user interacts
+        // with the ad.
+        adView.AdViewDidLoad = delegate ()
+        {
+            Debug.Log("Banner loaded");
+        };
+        adView.AdViewDidFailWithError = delegate (string error)
+        {
+            Debug.Log("Banner failed to load with error: " + error);
+        };
+        adView.AdViewWillLogImpression = delegate ()
+        {
+            Debug.Log("Banner logged impression.");
+        };
+        adView.AdViewDidClick = delegate ()
+        {
+            Debug.Log("Banner clicked.");
+        };
+
+        // Initiate a request to load an ad.
+        adView.LoadAd();
+    }
+
+    public bool CheckBannerFan()
+    {
+        return isTurnOnFan && adView.IsValid();
+    }
+
+    public void ShowBannerFan()
+    {
+        adView.Show(AudienceNetwork.AdPosition.BOTTOM);
+    }
+
+    public void HideBannerFan()
+    {
+        adView.Dispose();
+        RequestBannerFan();
+    }
+
+    public void RequestRewardedVideoFan()
+    {
+
+        // Create the rewarded video unit with a placement ID (generate your own on the Facebook app settings).
+        // Use different ID for each ad placement in your app.
+        rewardedVideoAd = new AudienceNetwork.RewardedVideoAd("183898216451495_183899426451374");
+
+        // For S2S validation you can create the rewarded video ad with the reward data
+        // Refer to documentation here:
+        // https://developers.facebook.com/docs/audience-network/android/rewarded-video#server-side-reward-validation
+        // https://developers.facebook.com/docs/audience-network/ios/rewarded-video#server-side-reward-validation
+        AudienceNetwork.RewardData rewardData = new AudienceNetwork.RewardData
+        {
+            UserId = "USER_ID",
+            Currency = "REWARD_ID"
+        };
+#pragma warning disable 0219
+        AudienceNetwork.RewardedVideoAd s2sRewardedVideoAd = new AudienceNetwork.RewardedVideoAd("YOUR_PLACEMENT_ID", rewardData);
+#pragma warning restore 0219
+
+        rewardedVideoAd.Register(gameObject);
+
+        // Set delegates to get notified on changes or when the user interacts with the ad.
+        rewardedVideoAd.RewardedVideoAdDidLoad = delegate ()
+        {
+            Debug.Log("RewardedVideo ad loaded.");
+        };
+        rewardedVideoAd.RewardedVideoAdDidFailWithError = delegate (string error)
+        {
+            Debug.Log("RewardedVideo ad failed to load with error: " + error);
+        };
+        rewardedVideoAd.RewardedVideoAdWillLogImpression = delegate ()
+        {
+            Debug.Log("RewardedVideo ad logged impression.");
+        };
+        rewardedVideoAd.RewardedVideoAdDidClick = delegate ()
+        {
+            Debug.Log("RewardedVideo ad clicked.");
+        };
+
+        // For S2S validation you need to register the following two callback
+        // Refer to documentation here:
+        // https://developers.facebook.com/docs/audience-network/android/rewarded-video#server-side-reward-validation
+        // https://developers.facebook.com/docs/audience-network/ios/rewarded-video#server-side-reward-validation
+        rewardedVideoAd.RewardedVideoAdDidSucceed = delegate ()
+        {
+            Debug.Log("Rewarded video ad validated by server");
+        };
+
+        rewardedVideoAd.RewardedVideoAdDidFail = delegate ()
+        {
+            Debug.Log("Rewarded video ad not validated, or no response from server");
+        };
+
+        rewardedVideoAd.RewardedVideoAdDidClose = delegate ()
+        {
+            Debug.Log("Rewarded video ad did close.");
+            if (rewardedVideoAd != null)
+            {
+                rewardedVideoAd.Dispose();
+            }
+        };
+
+#if UNITY_ANDROID
+        /*
+         * Only relevant to Android.
+         * This callback will only be triggered if the Rewarded Video activity
+         * has been destroyed without being properly closed. This can happen if
+         * an app with launchMode:singleTask (such as a Unity game) goes to
+         * background and is then relaunched by tapping the icon.
+         */
+        rewardedVideoAd.RewardedVideoAdActivityDestroyed = delegate ()
+        {
+                Debug.Log("Rewarded video activity destroyed without being closed first.");
+                Debug.Log("Game should resume. User should not get a reward.");
+        };
+#endif
+
+        // Initiate the request to load the ad.
+        rewardedVideoAd.LoadAd();
+    }
+
+    public bool CheckRewardVideoFan()
+    {
+        return isTurnOnFan && rewardedVideoAd.IsValid();
+    }
+
+    public void ShowRewardedVideoFan() // need to add check
+    {
+        rewardedVideoAd.Show();
+        RequestRewardedVideoFan();
+    }
+
+    public void RequestInterstitialFan()
+    {
+        // Create the interstitial unit with a placement ID (generate your own on the Facebook app settings).
+        // Use different ID for each ad placement in your app.
+        interstitialAd = new AudienceNetwork.InterstitialAd("183898216451495_183899426451374");
+
+        interstitialAd.Register(gameObject);
+
+        // Set delegates to get notified on changes or when the user interacts with the ad.
+        interstitialAd.InterstitialAdDidLoad = delegate ()
+        {
+            Debug.Log("Interstitial ad loaded.");
+        };
+        interstitialAd.InterstitialAdDidFailWithError = delegate (string error)
+        {
+            Debug.Log("Interstitial ad failed to load with error: " + error);
+        };
+        interstitialAd.InterstitialAdWillLogImpression = delegate ()
+        {
+            Debug.Log("Interstitial ad logged impression.");
+        };
+        interstitialAd.InterstitialAdDidClick = delegate ()
+        {
+            Debug.Log("Interstitial ad clicked.");
+        };
+        interstitialAd.InterstitialAdDidClose = delegate ()
+        {
+            Debug.Log("Interstitial ad did close.");
+            if (interstitialAd != null)
+            {
+                interstitialAd.Dispose();
+            }
+        };
+
+#if UNITY_ANDROID
+        /*
+         * Only relevant to Android.
+         * This callback will only be triggered if the Interstitial activity has
+         * been destroyed without being properly closed. This can happen if an
+         * app with launchMode:singleTask (such as a Unity game) goes to
+         * background and is then relaunched by tapping the icon.
+         */
+        interstitialAd.interstitialAdActivityDestroyed = delegate () {
+                Debug.Log("Interstitial activity destroyed without being closed first.");
+                Debug.Log("Game should resume.");
+        };
+#endif
+
+        // Initiate the request to load the ad.
+        interstitialAd.LoadAd();
+    }
+
+    public bool CheckInterstitialFan()
+    {
+        return isTurnOnFan && interstitialAd.IsValid();
+    }
+
+    public void ShowInterstitialFan()
+    {
+        interstitialAd.Show();
+        RequestInterstitialFan();
+    }
+
+    public void EnableFan()
+    {
+        isTurnOnFan = true;
+    }
+
+    public void DisableFan()
+    {
+        isTurnOnFan = false;
+    }
+
+#endregion
+
+#region Request And Show Main Function
+
     public void ShowInterstitial()
     {
-        if (this.interstitial.IsLoaded())
+        if(CheckInterstitialUnityAds())
         {
-            this.interstitial.Show();
-            this.RequestInterstitial();
+            ShowInterstitialUnityAds();
         }
-        else
+        else if(CheckInterstitialAdmobs())
         {
-            MonoBehaviour.print("Interstitial is not ready yet");
+            ShowInterstitialAdmobs();
         }
+        #if !UNITY_EDITOR
+        else if(CheckInterstitialFan())
+        {
+            ShowInterstitialFan();
+        }
+        #endif
     }
 
-    public bool CheckRewardBasedVideo()
+    public void ShowRewardVideo()
     {
-
-
-        return rewardBasedVideo.IsLoaded();
+        if (CheckVideoRewardUnityAds())
+        {
+            ShowVideoRewardUnityAds();
+        }
+        else if (CheckRewardBasedVideoAdmobs())
+        {
+            ShowRewardBasedVideoAdmobs();
+        }
+        #if !UNITY_EDITOR
+        else if (CheckRewardVideoFan())
+        {
+            ShowRewardedVideoFan();
+        }
+        #endif
     }
 
-    public void ShowRewardBasedVideo(UnityAction action = null)
+    public void ShowBanner()
     {
-        if (CheckRewardBasedVideo())
+        if(CheckBannerUnityAds())
         {
-            rewardVideoAction = action;
-            this.rewardBasedVideo.Show();
+            ShowBannerUnityAds();
+        }
+        else if(CheckBannerAdmobs())
+        {
+            ShowBannerAdmobs(true);
         }
 
+        #if !UNITY_EDITOR
+        else if(CheckBannerFan())
+        {
+            ShowBannerFan();
+        }
+        #endif
+    }    
 
+    public void HideBanner()
+    {
+        if (CheckBannerUnityAds())
+        {
+            HideBannerUnityAds();
+        }
 
-
+        if (CheckBannerAdmobs())
+        {
+            ShowBannerAdmobs(false);
+        }
+        #if !UNITY_EDITOR
+        if (CheckBannerFan())
+        {
+            HideBannerFan();
+        }
+        #endif
     }
+
+    #endregion
+
 
     #region Banner callback handlers
 
@@ -397,7 +792,7 @@ public class GoogleMobileAdsScript : MonoBehaviour
 
     }
 
-    public void HandleAdFailedToLoad(object sender, AdFailedToLoadEventArgs args)
+    public void HandleAdFailedToLoad(object sender, GoogleMobileAds.Api.AdFailedToLoadEventArgs args)
     {
         MonoBehaviour.print("HandleFailedToReceiveAd event received with message: " + args.Message);
     }
@@ -418,16 +813,16 @@ public class GoogleMobileAdsScript : MonoBehaviour
         MonoBehaviour.print("HandleAdLeftApplication event received");
     }
 
-    #endregion
+#endregion
 
-    #region Interstitial callback handlers
+#region Interstitial callback handlers
 
     public void HandleInterstitialLoaded(object sender, EventArgs args)
     {
         MonoBehaviour.print("HandleInterstitialLoaded event received");
     }
 
-    public void HandleInterstitialFailedToLoad(object sender, AdFailedToLoadEventArgs args)
+    public void HandleInterstitialFailedToLoad(object sender, GoogleMobileAds.Api.AdFailedToLoadEventArgs args)
     {
         MonoBehaviour.print(
             "HandleInterstitialFailedToLoad event received with message: " + args.Message);
@@ -448,14 +843,14 @@ public class GoogleMobileAdsScript : MonoBehaviour
         MonoBehaviour.print("HandleInterstitialLeftApplication event received");
     }
 
-    #endregion
+#endregion
 
-    #region RewardBasedVideo callback handlers
+#region RewardBasedVideo callback handlers
 
 
     public void HandleRewardBasedVideoClosed(object sender, EventArgs args)
     {
-        this.RequestRewardBasedVideo();
+        this.RequestRewardBasedVideoAdmobs();
     }
 
 
@@ -473,27 +868,35 @@ public class GoogleMobileAdsScript : MonoBehaviour
         isUpdate = false;
     }
 
-    public void HandleRewardBasedVideoRewarded(object sender, Reward args)
+    public void HandleRewardBasedVideoRewarded(object sender, GoogleMobileAds.Api.Reward args)
     {
         Debug.Log("HandleRewardBasedVideoRewarded");
         isUpdate = true;
-        this.RequestRewardBasedVideo();
+        this.RequestRewardBasedVideoAdmobs();
 
     }
-
-
-
-
-
-
-
-
 
     public void HandleRewardBasedVideoLeftApplication(object sender, EventArgs args)
     {
         MonoBehaviour.print("HandleRewardBasedVideoLeftApplication event received");
     }
 
+    public void OnUnityAdsReady(string placementId)
+    {
+    }
 
-    #endregion
+    public void OnUnityAdsDidError(string message)
+    {
+    }
+
+    public void OnUnityAdsDidStart(string placementId)
+    {
+    }
+
+    public void OnUnityAdsDidFinish(string placementId, ShowResult showResult)
+    {
+    }
+
+
+#endregion
 }

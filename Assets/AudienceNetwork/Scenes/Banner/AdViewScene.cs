@@ -28,7 +28,6 @@ public class AdViewScene : BaseScene
     private void Awake()
     {
         AudienceNetworkAds.Initialize();
-        
         SetLoadAddButtonText();
         SettingsScene.InitializeSettings();
     }
@@ -51,7 +50,7 @@ public class AdViewScene : BaseScene
         // Create a banner's ad view with a unique placement ID
         // (generate your own on the Facebook app settings).
         // Use different ID for each ad placement in your app.
-        adView = new AdView("183898216451495_183899426451374", adSizeArray[currentAdSize]);
+        adView = new AdView("YOUR_PLACEMENT_ID", adSizeArray[currentAdSize]);
         
 
         adView.Register(gameObject);

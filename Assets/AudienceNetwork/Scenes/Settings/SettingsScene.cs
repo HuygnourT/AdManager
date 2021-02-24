@@ -16,7 +16,6 @@ public class SettingsScene : MonoBehaviour
     {
         string prefix = PlayerPrefs.GetString(URL_PREFIX_KEY, "");
         AudienceNetwork.AdSettings.SetUrlPrefix(prefix);
-        //AudienceNetwork.AdSettings.AddTestDevice("1bbcc364-2409-494a-86bc-10ca1ad1abe1");
     }
 
     void Start()

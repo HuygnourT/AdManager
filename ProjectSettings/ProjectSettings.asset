@@ -172,7 +172,7 @@ PlayerSettings:
   buildNumber: {}
   AndroidBundleVersionCode: 1
   AndroidMinSdkVersion: 19
-  AndroidTargetSdkVersion: 0
+  AndroidTargetSdkVersion: 29
   AndroidPreferredInstallLocation: 1
   aotOptions: 
   stripEngineCode: 1
@@ -729,9 +729,9 @@ PlayerSettings:
     m_VersionCode: 1
     m_VersionName: 
   apiCompatibilityLevel: 6
-  cloudProjectId: 167d7da6-3723-4e34-8d83-182652888561
+  cloudProjectId: 30dd22c7-7bf2-4827-b0e1-5ec36e58a705
   framebufferDepthMemorylessMode: 0
-  projectName: NewAds
+  projectName: TestAds
   organizationId: phuy0212
   cloudEnabled: 0
   enableNativePlatformBackendsForNewInputSystem: 0
