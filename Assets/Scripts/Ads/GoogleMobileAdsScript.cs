@@ -440,17 +440,55 @@ public class GoogleMobileAdsScript : MonoBehaviour, IUnityAdsListener
 
     public bool CheckBannerUnityAds()
     {
-        return isTurnOnUnity && Advertisement.IsReady(mPlacementBannerUnityAds);
+        return isTurnOnUnity && (Advertisement.IsReady(mPlacementBannerUnityAds) || Advertisement.Banner.isLoaded);
     }
 
     public void ShowBannerUnityAds()
     {
-        Advertisement.Show(mPlacementBannerUnityAds);
+        ShowOrHideBannerUnityAds(true);
     }
 
     public void HideBannerUnityAds()
     {
         Advertisement.Banner.Hide();
+    }
+
+    public void ShowOrHideBannerUnityAds(bool isVisible, BannerPosition position = BannerPosition.BOTTOM_CENTER)
+    {
+        if (CheckBannerUnityAds() || Advertisement.Banner.isLoaded)
+        {
+            Advertisement.Banner.SetPosition(position);
+
+            if (isVisible)
+            {
+                BannerLoadOptions loadOptions = new BannerLoadOptions
+                {
+                    loadCallback = OnBannerLoaded,
+                    errorCallback = OnBannerError
+                };
+
+                Advertisement.Banner.Load(mPlacementBannerUnityAds, loadOptions);
+
+#if UNITY_EDITOR
+                Advertisement.Banner.Show(mPlacementBannerUnityAds);
+#endif
+            }
+            else
+            {
+                Advertisement.Banner.Hide();
+            }
+        }
+    }
+
+    void OnBannerLoaded()
+    {
+        Debug.Log("Banner Loaded");
+        Advertisement.Banner.Show(mPlacementBannerUnityAds);
+    }
+
+    void OnBannerError(string error)
+    {
+        Debug.Log("Banner Error: " + error);
     }
 
     public bool CheckVideoRewardUnityAds()
